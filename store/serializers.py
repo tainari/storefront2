@@ -8,7 +8,7 @@ class CollectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Collection
         fields = ['id','title','products_count']
-    products_count = serializers.IntegerField()
+    products_count = serializers.IntegerField(read_only=True)
         #did this unnecessarily - can put it in the GET method
         #fields = ['id','title','num_products']
     # num_products = serializers.SerializerMethodField(method_name="ct_products")
@@ -68,3 +68,7 @@ class ProductSerializer(serializers.ModelSerializer):
     #     if data['password'] != data['confirm_password']:
     #         return serializers.ValidationError('Passwords do not match')
     #     return data
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReviewSerializerfields = ['id','date','name','description','product']
