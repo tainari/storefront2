@@ -1,13 +1,18 @@
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
+# from django.http import HttpResponse
 from django.db.models import Count
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from rest_framework.mixins import ListModelMixin, CreateModelMixin
-from rest_framework.decorators import api_view
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend #needs pipenv install django-filter   ; remember to install in settings.py too.
+from rest_framework.filters import SearchFilter, OrderingFilter
+# from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.viewsets import ModelViewSet ##Can also have ReadOnlyModelViewSet! no writing.
-from rest_framework.views import APIView
+from rest_framework import status
+# from rest_framework.decorators import api_view
+# from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+# from rest_framework.mixins import ListModelMixin, CreateModelMixin
+# from rest_framework.views import APIView
+from .pagination import DefaultPagination
+from .filters import ProductFilter
 from .models import Product, Collection,OrderItem, Review
 from .serializers import ProductSerializer, CollectionSerializer, ReviewSerializer
 
@@ -16,6 +21,27 @@ from .serializers import ProductSerializer, CollectionSerializer, ReviewSerializ
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
+    #filterset_fields = ['collection_id','unit_price']
+    ##filterset_fields note: for unit_price, only filters for exact match - instead,
+    ##create filters.py (see file) and then use:
+    filterset_class = ProductFilter
+    #do not need pagination_class below if settings.py REST_FRAMEWORK{} does not have 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    pagination_class = DefaultPagination #this is custom; can also use PageNumberPagination
+    search_fields = ['title','description']
+    ordering_fields = ['unit_price','last_update'] #note last_update isn't being 
+    #   returned but it can still be used to sort
+    
+    ##NOTE: This is needed instead of queryset = above UNLESS
+    ##you are using the filter_backents function
+    # def get_queryset(self):
+    #     queryset = Product.objects.all()
+    #     collection_id = self.request.query_params.get('collection_id')
+    #     if collection_id is not None:
+    #         queryset = queryset.filter(collection_id=collection_id)
+    #     return queryset
+        # this line below won't work if there's no collection id provided!
+        # return Product.objects.filter(collection_id=self.request.query_params['collection_id'])
 
     def get_serializer_context(self):
         return {'request':self.request}
@@ -51,8 +77,13 @@ class CollectionViewSet(ModelViewSet):
     #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ReviewViewSet(ModelViewSet):
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
+    def get_serializer_context(self):
+        return {'product_id': self.kwargs['product_pk']}
+    #need to override get_queryset instead of changing the queryset = line used in other methods
+    #because don't have access to self. in the latter
+    def get_queryset(self):
+        return Review.objects.filter(product_id=self.kwargs['product_pk'])
 
 #CLASS-BASED VIEW WITH GENERICS
 # class ProductList(ListCreateAPIView):
